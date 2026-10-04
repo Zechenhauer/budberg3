@@ -212,7 +212,6 @@
             text-transform: uppercase;
         }
 
-        /* NEUE NEBENEINANDER-ZEILE FÜR BESTES & SCHLECHTESTES ERGEBNIS */
         .stats-row-split {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -367,13 +366,13 @@
         }
         .form-grid {
             display: grid;
-            grid-template-columns: 2fr 2fr repeat(2, 1fr);
+            grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr;
             gap: 8px;
             align-items: end;
         }
         @media (max-width: 900px) {
             .form-grid { grid-template-columns: 1fr 1fr; }
-            .form-grid .form-group-team { grid-column: span 2; }
+            .form-grid .form-group-team, .form-grid .form-group-date, .form-grid .form-group-time { grid-column: span 2; }
         }
         .form-group label {
             display: block;
@@ -511,12 +510,12 @@
     <!-- ERGEBNISSE EINTRAGEN / BEARBEITEN -->
     <div class="admin-card" id="adminCard">
         <div style="font-weight: bold; color: var(--svb-white); margin-bottom: 12px; text-transform: uppercase; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
-            <span>✏️ Ergebnisse für <span id="adminMatchdayLabel">Spieltag 1</span> erfassen</span>
+            <span>✏️ Ergebnisse & Ansetzungen für <span id="adminMatchdayLabel">Spieltag 1</span> erfassen</span>
             <span style="font-size: 0.7rem; color: var(--accent-green);">● Admin-Modus Aktiv</span>
         </div>
         
         <div id="matchInputsContainer"></div>
-        <button class="btn" onclick="saveAllMatches()">Alle Ergebnisse für diesen Spieltag speichern</button>
+        <button class="btn" onclick="saveAllMatches()">Alle Ansetzungen & Ergebnisse speichern</button>
     </div>
 
     <!-- ADMIN SCHALTER UNTEN -->
@@ -659,6 +658,11 @@
             } else {
                 sourceData.matches[mDay].forEach((savedM, sIdx) => {
                     if (leagueData.matches[mDay][sIdx]) {
+                        leagueData.matches[mDay][sIdx].home = savedM.home || leagueData.matches[mDay][sIdx].home;
+                        leagueData.matches[mDay][sIdx].away = savedM.away || leagueData.matches[mDay][sIdx].away;
+                        leagueData.matches[mDay][sIdx].date = savedM.date || leagueData.matches[mDay][sIdx].date;
+                        leagueData.matches[mDay][sIdx].time = savedM.time || leagueData.matches[mDay][sIdx].time;
+
                         if (savedM.homeScore !== undefined && savedM.homeScore !== null) {
                             leagueData.matches[mDay][sIdx].homeScore = savedM.homeScore;
                         }
@@ -748,8 +752,8 @@
     function renderSvbStats() {
         let played = 0, won = 0, draw = 0, lost = 0, goalsFor = 0, goalsAgainst = 0, points = 0;
         let matchHistory = [];
-        let bestWin = null;
-        let worstLoss = null;
+        let bestWinObj = null;
+        let worstLossObj = null;
         let maxGoalDiffWin = -999;
         let maxGoalDiffLoss = 999;
 
@@ -772,7 +776,7 @@
                     goalsAgainst += oppG;
 
                     let diff = myG - oppG;
-                    let resStr = `${myG}:${oppG}`;
+                    let opponent = isHome ? m.away : m.home;
 
                     let res = '';
                     if (myG > oppG) { 
@@ -781,7 +785,7 @@
                         res = 'W'; 
                         if (diff > maxGoalDiffWin) {
                             maxGoalDiffWin = diff;
-                            bestWin = resStr;
+                            bestWinObj = { text: `${myG}:${oppG} (vs. ${opponent}, ST ${mDay})` };
                         }
                     } else if (myG === oppG) { 
                         draw++; 
@@ -792,7 +796,7 @@
                         res = 'L'; 
                         if (diff < maxGoalDiffLoss) {
                             maxGoalDiffLoss = diff;
-                            worstLoss = resStr;
+                            worstLossObj = { text: `${myG}:${oppG} (vs. ${opponent}, ST ${mDay})` };
                         }
                     }
 
@@ -811,8 +815,8 @@
         `;
 
         document.getElementById('svbStatsGridBottom').innerHTML = `
-            <div class="stat-card"><div class="stat-label">Bester Sieg</div><div class="stat-value" style="color: #3fb950;">${bestWin || '-'}</div></div>
-            <div class="stat-card"><div class="stat-label">Höchste Schlappe</div><div class="stat-value" style="color: #f85149;">${worstLoss || '-'}</div></div>
+            <div class="stat-card"><div class="stat-label">Bester Sieg</div><div class="stat-value" style="color: #3fb950; font-size: 0.95rem;">${bestWinObj ? bestWinObj.text : '-'}</div></div>
+            <div class="stat-card"><div class="stat-label">Höchste Schlappe</div><div class="stat-value" style="color: #f85149; font-size: 0.95rem;">${worstLossObj ? worstLossObj.text : '-'}</div></div>
         `;
 
         // Formverlauf Rendern (Letzte 12 Spiele)
@@ -1000,6 +1004,14 @@
                                 ${leagueData.teams.map(t => `<option value="${t}" ${t === m.away ? 'selected' : ''}>${t}</option>`).join('')}
                             </select>
                         </div>
+                        <div class="form-group form-group-date">
+                            <label>Datum</label>
+                            <input type="date" id="date_${idx}" class="form-control" value="${m.date || ''}">
+                        </div>
+                        <div class="form-group form-group-time">
+                            <label>Uhrzeit</label>
+                            <input type="text" id="time_${idx}" class="form-control" value="${m.time || ''}" placeholder="15:00">
+                        </div>
                         <div class="form-group">
                             <label>Tore Heim</label>
                             <input type="number" id="hs_${idx}" class="form-control" value="${m.homeScore !== undefined && m.homeScore !== null ? m.homeScore : ''}" min="0">
@@ -1039,6 +1051,8 @@
         for (let idx = 0; idx < existingMatches.length; idx++) {
             let homeSel = document.getElementById(`home_${idx}`);
             let awaySel = document.getElementById(`away_${idx}`);
+            let dateVal = document.getElementById(`date_${idx}`).value;
+            let timeVal = document.getElementById(`time_${idx}`).value;
             let hsVal = document.getElementById(`hs_${idx}`).value;
             let asVal = document.getElementById(`as_${idx}`).value;
 
@@ -1046,6 +1060,8 @@
                 existingMatches[idx].home = homeSel.value;
                 existingMatches[idx].away = awaySel.value;
             }
+            if (dateVal) existingMatches[idx].date = dateVal;
+            if (timeVal) existingMatches[idx].time = timeVal;
 
             if (hsVal !== '' && asVal !== '') {
                 existingMatches[idx].homeScore = parseInt(hsVal);
@@ -1058,7 +1074,7 @@
 
         renderAll();
         saveToCloud();
-        alert("Spieltag & Ergebnisse erfolgreich gespeichert!");
+        alert("Spieltag & Ansetzungen erfolgreich gespeichert!");
     }
 
     function deleteMatchResult(idx) {
