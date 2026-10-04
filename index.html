@@ -189,7 +189,7 @@
 
         .stats-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
             gap: 10px;
             margin-bottom: 15px;
         }
@@ -207,7 +207,7 @@
             margin-top: 4px;
         }
         .stat-label {
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
             text-transform: uppercase;
         }
@@ -740,6 +740,10 @@
     function renderSvbStats() {
         let played = 0, won = 0, draw = 0, lost = 0, goalsFor = 0, goalsAgainst = 0, points = 0;
         let matchHistory = [];
+        let bestWin = null;     // Höchster Sieg (z.B. "4:0")
+        let worstLoss = null;   // Höchste Niederlage (z.B. "1:4")
+        let maxGoalDiffWin = -999;
+        let maxGoalDiffLoss = 999;
 
         let sortedMatchdays = Object.keys(leagueData.matches).map(Number).sort((a, b) => a - b);
 
@@ -759,10 +763,30 @@
                     goalsFor += myG;
                     goalsAgainst += oppG;
 
+                    let diff = myG - oppG;
+                    let resStr = `${myG}:${oppG}`;
+
                     let res = '';
-                    if (myG > oppG) { won++; points += 3; res = 'W'; }
-                    else if (myG === oppG) { draw++; points += 1; res = 'D'; }
-                    else { lost++; res = 'L'; }
+                    if (myG > oppG) { 
+                        won++; 
+                        points += 3; 
+                        res = 'W'; 
+                        if (diff > maxGoalDiffWin) {
+                            maxGoalDiffWin = diff;
+                            bestWin = resStr;
+                        }
+                    } else if (myG === oppG) { 
+                        draw++; 
+                        points += 1; 
+                        res = 'D'; 
+                    } else { 
+                        lost++; 
+                        res = 'L'; 
+                        if (diff < maxGoalDiffLoss) {
+                            maxGoalDiffLoss = diff;
+                            worstLoss = resStr;
+                        }
+                    }
 
                     matchHistory.push({ result: res, matchday: mDay });
                 }
@@ -776,6 +800,8 @@
             <div class="stat-card"><div class="stat-label">Niederlagen</div><div class="stat-value" style="color: #f85149;">${lost}</div></div>
             <div class="stat-card"><div class="stat-label">Tore</div><div class="stat-value">${goalsFor}:${goalsAgainst}</div></div>
             <div class="stat-card"><div class="stat-label">Punkte</div><div class="stat-value">${points}</div></div>
+            <div class="stat-card"><div class="stat-label">Bester Sieg</div><div class="stat-value" style="color: #3fb950; font-size: 1rem;">${bestWin || '-'}</div></div>
+            <div class="stat-card"><div class="stat-label">Höchste Schlappe</div><div class="stat-value" style="color: #f85149; font-size: 1rem;">${worstLoss || '-'}</div></div>
         `;
 
         // Formverlauf Rendern (Letzte 12 Spiele)
@@ -907,16 +933,14 @@
         sorted.forEach((s, idx) => {
             let tr = document.createElement('tr');
             
-            // Farbliche Markierungen für Tabellenregionen (Platz 1 = Aufstieg, Platz 14 = Relegation, ab Platz 15 = Abstieg)
             if (idx === 0) {
                 tr.classList.add('rank-first');
             } else if (idx === 13) {
-                tr.classList.add('rank-relegation'); // 14. Platz (Index 13)
+                tr.classList.add('rank-relegation'); // 14. Platz (Relegation)
             } else if (idx >= sorted.length - 2 && sorted.length > 2) {
                 tr.classList.add('rank-last'); // Abstiegsplätze
             }
 
-            // Dezente Hervorhebung für SV Budberg III in der Gesamttabelle
             if (s.name === "SV Budberg III") {
                 tr.classList.add('svb-team-row');
             }
