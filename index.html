@@ -191,7 +191,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
             gap: 10px;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         .stat-card {
             background: #141414;
@@ -210,6 +210,14 @@
             font-size: 0.65rem;
             color: var(--text-muted);
             text-transform: uppercase;
+        }
+
+        /* NEUE NEBENEINANDER-ZEILE FÜR BESTES & SCHLECHTESTES ERGEBNIS */
+        .stats-row-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
         }
 
         /* FORMVERLAUF KACHEL */
@@ -266,7 +274,6 @@
         }
         .matchday-btn:hover { background: #333333; border-color: var(--svb-white); }
 
-        /* Dezent unterlegter Teamname in Partien */
         .svb-highlight { 
             color: var(--svb-white) !important; 
             font-weight: bold; 
@@ -316,7 +323,6 @@
             color: #f85149;
         }
 
-        /* Dezente Markierung für SV Budberg III in der Gesamttabelle */
         tr.svb-team-row td {
             font-weight: bold;
             color: var(--svb-white);
@@ -433,7 +439,9 @@
             <span>SV Budberg III — Saison-Auswertung</span>
             <button class="btn-modal-open" onclick="openSvbMatchesModal()">📅 Alle Spiele Budberg III</button>
         </div>
-        <div class="stats-grid" id="svbStatsGrid"></div>
+        
+        <div class="stats-grid" id="svbStatsGridTop"></div>
+        <div class="stats-row-split" id="svbStatsGridBottom"></div>
 
         <div class="form-trend-box">
             <span style="font-size: 0.8rem; font-weight: bold; color: var(--text-muted);">Formverlauf (letzte 12 Spiele):</span>
@@ -740,8 +748,8 @@
     function renderSvbStats() {
         let played = 0, won = 0, draw = 0, lost = 0, goalsFor = 0, goalsAgainst = 0, points = 0;
         let matchHistory = [];
-        let bestWin = null;     // Höchster Sieg (z.B. "4:0")
-        let worstLoss = null;   // Höchste Niederlage (z.B. "1:4")
+        let bestWin = null;
+        let worstLoss = null;
         let maxGoalDiffWin = -999;
         let maxGoalDiffLoss = 999;
 
@@ -793,15 +801,18 @@
             });
         });
 
-        document.getElementById('svbStatsGrid').innerHTML = `
+        document.getElementById('svbStatsGridTop').innerHTML = `
             <div class="stat-card"><div class="stat-label">Spiele</div><div class="stat-value">${played}</div></div>
             <div class="stat-card"><div class="stat-label">Siege</div><div class="stat-value" style="color: #3fb950;">${won}</div></div>
             <div class="stat-card"><div class="stat-label">Remis</div><div class="stat-value" style="color: #e3b341;">${draw}</div></div>
             <div class="stat-card"><div class="stat-label">Niederlagen</div><div class="stat-value" style="color: #f85149;">${lost}</div></div>
             <div class="stat-card"><div class="stat-label">Tore</div><div class="stat-value">${goalsFor}:${goalsAgainst}</div></div>
             <div class="stat-card"><div class="stat-label">Punkte</div><div class="stat-value">${points}</div></div>
-            <div class="stat-card"><div class="stat-label">Bester Sieg</div><div class="stat-value" style="color: #3fb950; font-size: 1rem;">${bestWin || '-'}</div></div>
-            <div class="stat-card"><div class="stat-label">Höchste Schlappe</div><div class="stat-value" style="color: #f85149; font-size: 1rem;">${worstLoss || '-'}</div></div>
+        `;
+
+        document.getElementById('svbStatsGridBottom').innerHTML = `
+            <div class="stat-card"><div class="stat-label">Bester Sieg</div><div class="stat-value" style="color: #3fb950;">${bestWin || '-'}</div></div>
+            <div class="stat-card"><div class="stat-label">Höchste Schlappe</div><div class="stat-value" style="color: #f85149;">${worstLoss || '-'}</div></div>
         `;
 
         // Formverlauf Rendern (Letzte 12 Spiele)
