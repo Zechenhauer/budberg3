@@ -462,7 +462,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th style="width: 130px;">Termin</th>
+                        <th style="width: 150px;">Termin</th>
                         <th style="text-align: right;">Heimmannschaft</th>
                         <th style="text-align: center; width: 100px;">Ergebnis</th>
                         <th>Gastmannschaft</th>
@@ -537,7 +537,7 @@
                     <thead>
                         <tr>
                             <th style="width: 50px; text-align: center;">ST</th>
-                            <th style="width: 90px;">Termin</th>
+                            <th style="width: 110px;">Termin</th>
                             <th style="text-align: right;">Heim</th>
                             <th style="text-align: center; width: 70px;">Erg.</th>
                             <th>Gast</th>
@@ -607,6 +607,19 @@
             ]
         }
     };
+
+    // Hilfsfunktion: Formatiert Datum automatisch mit Wochentag (z.B. "So., 30.08.2026")
+    function formatMatchDate(dateStr) {
+        if (!dateStr) return '-';
+        let parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        let d = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (isNaN(d.getTime())) return dateStr;
+        
+        let weekday = d.toLocaleDateString('de-DE', { weekday: 'short' }); // z.B. "So."
+        let dateFormatted = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); // "30.08.2026"
+        return `${weekday}, ${dateFormatted}`;
+    }
 
     function toggleAdminMode() {
         const adminCard = document.getElementById('adminCard');
@@ -725,7 +738,7 @@
 
         existingMatches.forEach((m, idx) => {
             let hasResult = m.homeScore !== undefined && m.homeScore !== null && m.awayScore !== undefined && m.awayScore !== null;
-            let formattedDate = m.date ? m.date.split('-').reverse().join('.') : '-';
+            let formattedDate = formatMatchDate(m.date);
             let timeStr = m.time ? ` ${m.time} Uhr` : '';
             
             let homeClass = m.home === "SV Budberg III" ? 'svb-highlight' : '';
@@ -878,7 +891,7 @@
                 }
 
                 let resultDisplay = hasResult ? `<strong>${m.homeScore}:${m.awayScore}</strong>` : `<span style="color:var(--text-muted);">-:-</span>`;
-                let formattedDate = m.date ? m.date.split('-').reverse().join('.') : 'Offen';
+                let formattedDate = formatMatchDate(m.date);
 
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
