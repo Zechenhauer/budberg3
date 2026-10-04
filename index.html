@@ -119,6 +119,12 @@
             gap: 10px;
         }
 
+        .header-btn-group {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
         .btn-modal-open {
             background: var(--svb-white);
             color: #000000;
@@ -370,9 +376,13 @@
             gap: 8px;
             align-items: end;
         }
+        .form-grid-scorers {
+            grid-column: span 6;
+            margin-top: 5px;
+        }
         @media (max-width: 900px) {
             .form-grid { grid-template-columns: 1fr 1fr; }
-            .form-grid .form-group-team, .form-grid .form-group-date, .form-grid .form-group-time { grid-column: span 2; }
+            .form-grid .form-group-team, .form-grid .form-group-date, .form-grid .form-group-time, .form-grid-scorers { grid-column: span 2; }
         }
         .form-group label {
             display: block;
@@ -436,7 +446,10 @@
     <div class="section-box">
         <div class="section-header">
             <span>SV Budberg III — Saison-Auswertung</span>
-            <button class="btn-modal-open" onclick="openSvbMatchesModal()">📅 Alle Spiele Budberg III</button>
+            <div class="header-btn-group">
+                <button class="btn-modal-open" onclick="openSvbMatchesModal()">📅 Alle Spiele</button>
+                <button class="btn-modal-open" style="background: var(--svb-gold); color: #000;" onclick="openScorersModal()">⚽ Torschützen</button>
+            </div>
         </div>
         
         <div class="stats-grid" id="svbStatsGridTop"></div>
@@ -551,6 +564,31 @@
     </div>
 </div>
 
+<!-- POPUP MODAL: TORSCHÜTZEN SV BUDBERG III -->
+<div class="modal-overlay" id="scorersModal">
+    <div class="modal-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+            <div style="font-weight: bold; font-size: 1.1rem; color: #ffffff;">⚽ Torschützenliste — SV Budberg III</div>
+            <button class="btn-danger" onclick="closeScorersModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px; text-align: center;">Pl.</th>
+                            <th>Spieler</th>
+                            <th style="text-align: center; width: 80px;">Tore</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scorersModalBody"></tbody>
+                </table>
+            </div>
+        </div>
+        <button class="btn" style="margin-top: 15px;" onclick="closeScorersModal()">Schließen</button>
+    </div>
+</div>
+
 <script>
     // ==========================================
     // SUPABASE EINSTELLUNGEN
@@ -596,7 +634,7 @@
         ],
         matches: {
             "1": [
-                { home: "SV Budberg III", away: "TV Asberg I", date: "2026-08-30", time: "17:00", homeScore: 1, awayScore: 0 },
+                { home: "SV Budberg III", away: "TV Asberg I", date: "2026-08-30", time: "17:00", homeScore: 1, awayScore: 0, scorers: "Mustermann" },
                 { home: "VfL Rheinhausen", away: "Rumelner TV", date: "2026-08-29", time: "17:00", homeScore: 2, awayScore: 3 },
                 { home: "GSV Moers II", away: "Büdericher SV", date: "2026-08-30", time: "13:30", homeScore: 0, awayScore: 2 },
                 { home: "MSV Moers", away: "SV Sonsbeck II", date: "2026-08-30", time: "15:00", homeScore: 3, awayScore: 1 },
@@ -616,8 +654,8 @@
         let d = new Date(parts[0], parts[1] - 1, parts[2]);
         if (isNaN(d.getTime())) return dateStr;
         
-        let weekday = d.toLocaleDateString('de-DE', { weekday: 'short' }); // z.B. "So."
-        let dateFormatted = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }); // "30.08.2026"
+        let weekday = d.toLocaleDateString('de-DE', { weekday: 'short' });
+        let dateFormatted = d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
         return `${weekday}, ${dateFormatted}`;
     }
 
@@ -675,6 +713,7 @@
                         leagueData.matches[mDay][sIdx].away = savedM.away || leagueData.matches[mDay][sIdx].away;
                         leagueData.matches[mDay][sIdx].date = savedM.date || leagueData.matches[mDay][sIdx].date;
                         leagueData.matches[mDay][sIdx].time = savedM.time || leagueData.matches[mDay][sIdx].time;
+                        leagueData.matches[mDay][sIdx].scorers = savedM.scorers || leagueData.matches[mDay][sIdx].scorers;
 
                         if (savedM.homeScore !== undefined && savedM.homeScore !== null) {
                             leagueData.matches[mDay][sIdx].homeScore = savedM.homeScore;
@@ -912,6 +951,58 @@
         document.getElementById('svbMatchesModal').style.display = 'none';
     }
 
+    function openScorersModal() {
+        let tbody = document.getElementById('scorersModalBody');
+        tbody.innerHTML = '';
+
+        let scorerCounts = {};
+
+        for (let mDay in leagueData.matches) {
+            leagueData.matches[mDay].forEach(m => {
+                let isHome = m.home === "SV Budberg III";
+                let isAway = m.away === "SV Budberg III";
+                if ((isHome || isAway) && m.scorers) {
+                    let names = m.scorers.split(',').map(n => n.trim()).filter(n => n !== '');
+                    names.forEach(name => {
+                        // Prüfen ob Format "Name (X)" vorliegt
+                        let matchCount = name.match(/^(.+?)\s*\((\d+)\)$/);
+                        let player = name;
+                        let count = 1;
+
+                        if (matchCount) {
+                            player = matchCount[1].trim();
+                            count = parseInt(matchCount[2]);
+                        }
+
+                        scorerCounts[player] = (scorerCounts[player] || 0) + count;
+                    });
+                }
+            });
+        }
+
+        let sortedScorers = Object.entries(scorerCounts).sort((a, b) => b[1] - a[1]);
+
+        if (sortedScorers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">Noch keine Torschützen eingetragen.</td></tr>`;
+        } else {
+            sortedScorers.forEach(([player, goals], idx) => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="text-align: center; color: var(--svb-white); font-weight: bold;">${idx + 1}.</td>
+                    <td>${player}</td>
+                    <td style="text-align: center; font-weight: bold; color: var(--svb-gold);">${goals}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.getElementById('scorersModal').style.display = 'flex';
+    }
+
+    function closeScorersModal() {
+        document.getElementById('scorersModal').style.display = 'none';
+    }
+
     function renderTable() {
         let tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
@@ -998,6 +1089,18 @@
         let html = '';
         
         existingMatches.forEach((m, idx) => {
+            let isSvbMatch = m.home === "SV Budberg III" || m.away === "SV Budberg III";
+            let scorersFieldHtml = '';
+
+            if (isSvbMatch) {
+                scorersFieldHtml = `
+                    <div class="form-group form-grid-scorers">
+                        <label>Torschützen SV Budberg III (durch Komma getrennt)</label>
+                        <input type="text" id="scorers_${idx}" class="form-control" value="${m.scorers || ''}" placeholder="z.B. Müller, Schmidt (2)">
+                    </div>
+                `;
+            }
+
             html += `
                 <div class="match-input-card">
                     <div style="font-size: 0.8rem; color: var(--svb-white); font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
@@ -1033,6 +1136,7 @@
                             <label>Tore Gast</label>
                             <input type="number" id="as_${idx}" class="form-control" value="${m.awayScore !== undefined && m.awayScore !== null ? m.awayScore : ''}" min="0">
                         </div>
+                        ${scorersFieldHtml}
                     </div>
                 </div>
             `;
@@ -1068,6 +1172,7 @@
             let timeVal = document.getElementById(`time_${idx}`).value;
             let hsVal = document.getElementById(`hs_${idx}`).value;
             let asVal = document.getElementById(`as_${idx}`).value;
+            let scorersInput = document.getElementById(`scorers_${idx}`);
 
             if (homeSel && awaySel) {
                 existingMatches[idx].home = homeSel.value;
@@ -1075,6 +1180,9 @@
             }
             if (dateVal) existingMatches[idx].date = dateVal;
             if (timeVal) existingMatches[idx].time = timeVal;
+            if (scorersInput) {
+                existingMatches[idx].scorers = scorersInput.value.trim();
+            }
 
             if (hsVal !== '' && asVal !== '') {
                 existingMatches[idx].homeScore = parseInt(hsVal);
@@ -1082,6 +1190,7 @@
             } else {
                 delete existingMatches[idx].homeScore;
                 delete existingMatches[idx].awayScore;
+                delete existingMatches[idx].scorers;
             }
         }
 
@@ -1095,16 +1204,17 @@
         if (existingMatches && existingMatches[idx]) {
             delete existingMatches[idx].homeScore;
             delete existingMatches[idx].awayScore;
+            delete existingMatches[idx].scorers;
             renderAll();
             saveToCloud();
         }
     }
 
     window.onclick = function(e) {
-        let modal = document.getElementById('svbMatchesModal');
-        if (e.target === modal) {
-            closeSvbMatchesModal();
-        }
+        let svbModal = document.getElementById('svbMatchesModal');
+        let scorersModal = document.getElementById('scorersModal');
+        if (e.target === svbModal) closeSvbMatchesModal();
+        if (e.target === scorersModal) closeScorersModal();
     }
 
     loadFromCloud();
