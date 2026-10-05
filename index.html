@@ -336,6 +336,16 @@
             border-bottom: 1px solid rgba(56, 139, 253, 0.4);
         }
 
+        .clickable-team {
+            color: var(--text-color);
+            cursor: pointer;
+            transition: color 0.2s, text-decoration 0.2s;
+        }
+        .clickable-team:hover {
+            color: var(--svb-white);
+            text-decoration: underline;
+        }
+
         .admin-toggle-wrapper {
             text-align: right;
             margin-top: 15px;
@@ -447,7 +457,7 @@
         <div class="section-header">
             <span>SV Budberg III — Saison-Auswertung</span>
             <div class="header-btn-group">
-                <button class="btn-modal-open" onclick="openSvbMatchesModal()">📅 Alle Spiele</button>
+                <button class="btn-modal-open" onclick="openTeamMatchesModal('SV Budberg III')">📅 Alle Spiele</button>
                 <button class="btn-modal-open" style="background: var(--svb-gold); color: #000;" onclick="openScorersModal()">⚽ Torschützen</button>
             </div>
         </div>
@@ -492,6 +502,13 @@
     <!-- GESAMT-TABELLEN-ANSICHT -->
     <div class="section-box">
         <div class="section-header">Kreisliga A-Tabelle (Gesamt)</div>
+        
+        <!-- HINWEIS-INFO-BOX -->
+        <div style="font-size: 0.8rem; color: var(--text-color); margin-bottom: 12px; background: rgba(255, 255, 255, 0.05); padding: 10px 12px; border-radius: 6px; border-left: 3px solid var(--svb-gold); display: flex; align-items: center; gap: 8px;">
+            <span>💡</span>
+            <span><strong>Tipp:</strong> Klicke in der Tabelle auf einen beliebigen Vereinsnamen, um alle Saisonspiele des jeweiligen Teams anzuzeigen!</span>
+        </div>
+
         <div class="table-container">
             <table>
                 <thead>
@@ -533,16 +550,16 @@
 
     <!-- ADMIN SCHALTER UNTEN -->
     <div class="admin-toggle-wrapper">
-        <button class="admin-toggle-btn" onclick="toggleAdminMode()">⚙️ Admin-Zugang</button>
+        <button class="admin-toggle-btn" onclick="toggleAdminMode()">⚙ Admin-Zugang</button>
     </div>
 </div>
 
-<!-- POPUP MODAL: ALLE SPIELE SV BUDBERG III -->
-<div class="modal-overlay" id="svbMatchesModal">
+<!-- POPUP MODAL: SPIELE & STATISTIK FÜR JEDES TEAM -->
+<div class="modal-overlay" id="teamMatchesModal">
     <div class="modal-card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-            <div style="font-weight: bold; font-size: 1.1rem; color: #ffffff;">📅 SV Budberg III — Alle Saisonspiele</div>
-            <button class="btn-danger" onclick="closeSvbMatchesModal()">✕</button>
+            <div style="font-weight: bold; font-size: 1.1rem; color: #ffffff;" id="modalTeamTitle">📅 Saisonspiele</div>
+            <button class="btn-danger" onclick="closeTeamMatchesModal()">✕</button>
         </div>
         <div class="modal-body">
             <div class="table-container">
@@ -556,11 +573,11 @@
                             <th>Gast</th>
                         </tr>
                     </thead>
-                    <tbody id="svbMatchesModalBody"></tbody>
+                    <tbody id="teamMatchesModalBody"></tbody>
                 </table>
             </div>
         </div>
-        <button class="btn" style="margin-top: 15px;" onclick="closeSvbMatchesModal()">Schließen</button>
+        <button class="btn" style="margin-top: 15px;" onclick="closeTeamMatchesModal()">Schließen</button>
     </div>
 </div>
 
@@ -646,7 +663,6 @@
         }
     };
 
-    // Hilfsfunktion: Formatiert Datum automatisch mit Wochentag (z.B. "So., 30.08.2026")
     function formatMatchDate(dateStr) {
         if (!dateStr) return '-';
         let parts = dateStr.split('-');
@@ -871,7 +887,6 @@
             <div class="stat-card"><div class="stat-label">Höchste Schlappe</div><div class="stat-value" style="color: #f85149; font-size: 0.95rem;">${worstLossObj ? worstLossObj.text : '-'}</div></div>
         `;
 
-        // Formverlauf Rendern (Letzte 12 Spiele)
         let trendContainer = document.getElementById('svbTrendContainer');
         trendContainer.innerHTML = '';
 
@@ -889,34 +904,35 @@
         }
     }
 
-    function openSvbMatchesModal() {
-        let modalBody = document.getElementById('svbMatchesModalBody');
+    function openTeamMatchesModal(teamName) {
+        document.getElementById('modalTeamTitle').textContent = `📅 ${teamName} — Alle Saisonspiele`;
+        let modalBody = document.getElementById('teamMatchesModalBody');
         modalBody.innerHTML = '';
 
-        let svbMatches = [];
+        let teamMatches = [];
         for (let mDay in leagueData.matches) {
             leagueData.matches[mDay].forEach(m => {
-                if (m.home === "SV Budberg III" || m.away === "SV Budberg III") {
-                    svbMatches.push({ matchday: parseInt(mDay), ...m });
+                if (m.home === teamName || m.away === teamName) {
+                    teamMatches.push({ matchday: parseInt(mDay), ...m });
                 }
             });
         }
-        svbMatches.sort((a, b) => a.matchday - b.matchday);
+        teamMatches.sort((a, b) => a.matchday - b.matchday);
 
-        if (svbMatches.length === 0) {
+        if (teamMatches.length === 0) {
             modalBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">Keine Spiele gefunden.</td></tr>`;
         } else {
-            svbMatches.forEach(m => {
+            teamMatches.forEach(m => {
                 let hasResult = m.homeScore !== undefined && m.homeScore !== null && m.awayScore !== undefined && m.awayScore !== null;
-                let isHome = m.home === "SV Budberg III";
+                let isHome = m.home === teamName;
                 
                 let badgeClass = '';
                 if (hasResult) {
-                    let svbGoals = isHome ? m.homeScore : m.awayScore;
+                    let teamGoals = isHome ? m.homeScore : m.awayScore;
                     let oppGoals = isHome ? m.awayScore : m.homeScore;
 
-                    if (svbGoals > oppGoals) badgeClass = 'svb-badge-win';
-                    else if (svbGoals === oppGoals) badgeClass = 'svb-badge-draw';
+                    if (teamGoals > oppGoals) badgeClass = 'svb-badge-win';
+                    else if (teamGoals === oppGoals) badgeClass = 'svb-badge-draw';
                     else badgeClass = 'svb-badge-loss';
                 }
 
@@ -944,11 +960,11 @@
             });
         }
 
-        document.getElementById('svbMatchesModal').style.display = 'flex';
+        document.getElementById('teamMatchesModal').style.display = 'flex';
     }
 
-    function closeSvbMatchesModal() {
-        document.getElementById('svbMatchesModal').style.display = 'none';
+    function closeTeamMatchesModal() {
+        document.getElementById('teamMatchesModal').style.display = 'none';
     }
 
     function openScorersModal() {
@@ -964,7 +980,6 @@
                 if ((isHome || isAway) && m.scorers) {
                     let names = m.scorers.split(',').map(n => n.trim()).filter(n => n !== '');
                     names.forEach(name => {
-                        // Prüfen ob Format "Name (X)" vorliegt
                         let matchCount = name.match(/^(.+?)\s*\((\d+)\)$/);
                         let player = name;
                         let count = 1;
@@ -1055,9 +1070,9 @@
             if (idx === 0) {
                 tr.classList.add('rank-first');
             } else if (idx === 13) {
-                tr.classList.add('rank-relegation'); // 14. Platz (Relegation)
+                tr.classList.add('rank-relegation');
             } else if (idx >= sorted.length - 2 && sorted.length > 2) {
-                tr.classList.add('rank-last'); // Abstiegsplätze
+                tr.classList.add('rank-last');
             }
 
             if (s.name === "SV Budberg III") {
@@ -1068,7 +1083,7 @@
 
             tr.innerHTML = `
                 <td><strong>${idx + 1}.</strong></td>
-                <td>${s.name}</td>
+                <td><span class="clickable-team" onclick="openTeamMatchesModal('${s.name}')" title="Alle Spiele von ${s.name} anzeigen">${s.name}</span></td>
                 <td style="text-align: center;">${s.played}</td>
                 <td style="text-align: center;">${s.won}</td>
                 <td style="text-align: center;">${s.draw}</td>
@@ -1211,9 +1226,9 @@
     }
 
     window.onclick = function(e) {
-        let svbModal = document.getElementById('svbMatchesModal');
+        let teamModal = document.getElementById('teamMatchesModal');
         let scorersModal = document.getElementById('scorersModal');
-        if (e.target === svbModal) closeSvbMatchesModal();
+        if (e.target === teamModal) closeTeamMatchesModal();
         if (e.target === scorersModal) closeScorersModal();
     }
 
