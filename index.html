@@ -346,10 +346,31 @@
             text-decoration: underline;
         }
 
-        .admin-toggle-wrapper {
-            text-align: right;
+        /* FOOTER & TRACKING BEREICH UNTEN */
+        .footer-action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-top: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
+        .visitor-counter-box {
+            background: #141414;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .visitor-counter-box span {
+            color: var(--svb-white);
+            font-weight: bold;
+        }
+
         .admin-toggle-btn {
             background: transparent;
             border: 1px dashed var(--border-color);
@@ -540,7 +561,7 @@
     <!-- ERGEBNISSE EINTRAGEN / BEARBEITEN -->
     <div class="admin-card" id="adminCard">
         <div style="font-weight: bold; color: var(--svb-white); margin-bottom: 12px; text-transform: uppercase; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
-            <span>✏️ Ergebnisse & Ansetzungen für <span id="adminMatchdayLabel">Spieltag 1</span> erfassen</span>
+            <span>✏️️ Ergebnisse & Ansetzungen für <span id="adminMatchdayLabel">Spieltag 1</span> erfassen</span>
             <span style="font-size: 0.7rem; color: var(--accent-green);">● Admin-Modus Aktiv</span>
         </div>
         
@@ -548,8 +569,11 @@
         <button class="btn" onclick="saveAllMatches()">Alle Ansetzungen & Ergebnisse speichern</button>
     </div>
 
-    <!-- ADMIN SCHALTER UNTEN -->
-    <div class="admin-toggle-wrapper">
+    <!-- FOOTER (BESUCHER-ZÄHLER & ADMIN SCHALTER) -->
+    <div class="footer-action-row">
+        <div class="visitor-counter-box" title="Dauerhafte App-Aufrufe">
+            👁️ Aufrufe: <span id="visitorCountDisplay">-</span>
+        </div>
         <button class="admin-toggle-btn" onclick="toggleAdminMode()">⚙ Admin-Zugang</button>
     </div>
 </div>
@@ -631,6 +655,7 @@
 
     let leagueData = {
         currentMatchday: getStoredMatchday(),
+        visitorCount: 0,
         teams: [
             "SV Budberg III",
             "SSV Rheintreu Lüttingen",
@@ -706,9 +731,15 @@
                 if (cloudData && cloudData.matches) {
                     mergeMatches(cloudData);
                 }
-            } else {
-                saveToCloud();
+                if (cloudData && typeof cloudData.visitorCount === 'number') {
+                    leagueData.visitorCount = cloudData.visitorCount;
+                }
             }
+            
+            // Web-Tracking: Bei jedem App-Aufruf den Zähler um 1 erhöhen und direkt speichern
+            leagueData.visitorCount = (leagueData.visitorCount || 0) + 1;
+            saveToCloud();
+
         } catch (e) {
             console.log('Fehler beim Laden aus Supabase:', e);
         }
@@ -774,6 +805,7 @@
         document.getElementById('matchdayDisplay').textContent = `Spieltag ${leagueData.currentMatchday}`;
         document.getElementById('adminMatchdayLabel').textContent = `Spieltag ${leagueData.currentMatchday}`;
         document.getElementById('matchdayTableHeader').textContent = `Spieltag ${leagueData.currentMatchday} — Spiele & Ergebnisse`;
+        document.getElementById('visitorCountDisplay').textContent = leagueData.visitorCount || 1;
         
         renderMatchdayTable();
         renderTable();
