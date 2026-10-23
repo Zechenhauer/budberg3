@@ -21,6 +21,8 @@
             --accent-relegation: #d29922;
             --svb-white: #ffffff;
             --svb-gold: #f1e05a;
+            --svs-bright-blue: #388bfd;
+            --goal-cyan: #00f2fe;
         }
 
         * { box-sizing: border-box; }
@@ -42,6 +44,76 @@
             border-radius: 12px;
             padding: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+        }
+
+        /* LAUFBAND / TICKER STYLES */
+        .ticker-wrapper {
+            width: 100%;
+            background: linear-gradient(90deg, #090e1f 0%, #0d1a40 50%, #090e1f 100%);
+            border: 1px solid var(--svs-bright-blue);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            height: 38px;
+            position: relative;
+            box-shadow: 0 0 20px rgba(56, 139, 253, 0.25);
+        }
+        .ticker-label {
+            background: linear-gradient(135deg, #002060, var(--svs-bright-blue));
+            color: #ffffff;
+            font-size: 0.75rem;
+            font-weight: 800;
+            padding: 0 14px;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            z-index: 2;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            white-space: nowrap;
+            border-right: 1px solid var(--svs-bright-blue);
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+        }
+        .ticker-content-box {
+            overflow: hidden;
+            white-space: nowrap;
+            flex: 1;
+            position: relative;
+        }
+        .ticker-track {
+            display: inline-block;
+            white-space: nowrap;
+            animation: ticker-scroll 85s linear infinite;
+            font-size: 0.85rem;
+            color: #ffffff;
+            font-weight: 500;
+        }
+        .ticker-track:hover {
+            animation-play-state: paused;
+        }
+        .ticker-item {
+            display: inline-block;
+            padding: 0 30px;
+            color: #ffffff;
+        }
+        .ticker-item span {
+            color: var(--svb-gold);
+            font-weight: bold;
+            margin-left: 6px;
+        }
+        .ticker-highlight-svb {
+            background: rgba(56, 139, 253, 0.25);
+            border-top: 1px solid var(--svs-bright-blue);
+            border-bottom: 1px solid var(--svs-bright-blue);
+            padding-top: 3px;
+            padding-bottom: 3px;
+            border-radius: 4px;
+        }
+        @keyframes ticker-scroll {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
         }
 
         /* GROSSES VOLLBILD-BANNER */
@@ -504,6 +576,16 @@
 <body>
 
 <div class="container">
+    <!-- LAUFBAND / TICKER OBEN -->
+    <div class="ticker-wrapper">
+        <div class="ticker-label" id="tickerLabel">⚽ Ticker</div>
+        <div class="ticker-content-box">
+            <div class="ticker-track" id="tickerTrack">
+                <span class="ticker-item">Lade aktuelle Spielstände und Tore...</span>
+            </div>
+        </div>
+    </div>
+
     <!-- GROSSES VOLLBILD-BANNER -->
     <div class="banner-box">
         <img src="https://lhusylpjnujlqomougmg.supabase.co/storage/v1/object/public/Bilder/budberg%203.png" alt="SV Budberg III Banner" class="banner-image">
@@ -744,6 +826,43 @@
         }
     };
 
+    function updateTicker() {
+        let tickerItems = [];
+        let labelText = "⚽ Ticker";
+
+        let tickerMatchday = 1;
+        for (let mDay = 1; mDay <= 34; mDay++) {
+            let matches = leagueData.matches[mDay] || [];
+            let hasFinished = matches.some(m => m.homeScore !== undefined && m.homeScore !== null);
+            if (hasFinished) {
+                tickerMatchday = mDay;
+            }
+        }
+
+        let matches = leagueData.matches[tickerMatchday] || [];
+        labelText = `⚽ SPIELTAG ${tickerMatchday} (ERGEBNISSE)`;
+
+        matches.forEach(m => {
+            let score = (m.homeScore !== null && m.homeScore !== undefined) ? `${m.homeScore}:${m.awayScore}` : 'vs';
+            let status = (m.homeScore !== null && m.homeScore !== undefined) ? 'Endstand' : (m.time ? `${m.time} Uhr` : '');
+            
+            let isBudbergMatch = (m.home === "SV Budberg III" || m.away === "SV Budberg III");
+            let highlightClass = isBudbergMatch ? ' ticker-highlight-svb' : '';
+            
+            tickerItems.push(`<span class="ticker-item${highlightClass}">${m.home} - ${m.away} <span>${score}</span> (${status})</span>`);
+        });
+
+        const tickerLabelElem = document.getElementById('tickerLabel');
+        if (tickerLabelElem) {
+            tickerLabelElem.textContent = labelText;
+        }
+
+        const tickerTrack = document.getElementById('tickerTrack');
+        if (tickerTrack) {
+            tickerTrack.innerHTML = tickerItems.length > 0 ? tickerItems.join('') : `<span class="ticker-item">Keine Spiele im Ticker verfügbar.</span>`;
+        }
+    }
+
     function trackVisitorDaily() {
         let today = new Date().toISOString().split('T')[0];
         let visitorStats = JSON.parse(localStorage.getItem('budberg3_visitor_stats') || '{}');
@@ -875,8 +994,8 @@
             } else {
                 sourceData.matches[mDay].forEach((savedM, sIdx) => {
                     if (leagueData.matches[mDay][sIdx]) {
-                        leagueData.matches[mDay][sIdx].home = savedM.home || leagueData.matches[mDay][sIdx].home;
-                        leagueData.matches[mDay][sIdx].away = savedM.away || leagueData.matches[mDay][sIdx].away;
+                        leagueData.matches[mDay][sIdx].home = (savedM.home && !savedM.home.includes('${t}')) ? savedM.home : leagueData.matches[mDay][sIdx].home;
+                        leagueData.matches[mDay][sIdx].away = (savedM.away && !savedM.away.includes('${t}')) ? savedM.away : leagueData.matches[mDay][sIdx].away;
                         leagueData.matches[mDay][sIdx].date = savedM.date || leagueData.matches[mDay][sIdx].date;
                         leagueData.matches[mDay][sIdx].time = savedM.time || leagueData.matches[mDay][sIdx].time;
                         leagueData.matches[mDay][sIdx].scorers = savedM.scorers || leagueData.matches[mDay][sIdx].scorers;
@@ -929,6 +1048,7 @@
         renderMatchdayTable();
         renderTable();
         renderSvbStats();
+        updateTicker();
         if (isAdmin) renderInputForm();
     }
 
@@ -1131,7 +1251,7 @@
                 if ((isHome || isAway) && m.scorers) {
                     let names = m.scorers.split(',').map(n => n.trim()).filter(n => n !== '');
                     names.forEach(name => {
-                        let matchCount = name.match(/^(.+?)\s*\((\d+)\)\$/);
+                        let matchCount = name.match(/^(.+?)\s*\((\d+)\)$/);
                         let player = name;
                         let count = 1;
 
@@ -1277,13 +1397,13 @@
                         <div class="form-group form-group-team">
                             <label>Heim</label>
                             <select id="home_${idx}" class="form-control">
-                                ${leagueData.teams.map(t => `<option value="\${t}" ${t === m.home ? 'selected' : ''}>${t}</option>`).join('')}
+                                ${leagueData.teams.map(t => `<option value="${t}" ${t === m.home ? 'selected' : ''}>${t}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group form-group-team">
                             <label>Gast</label>
                             <select id="away_${idx}" class="form-control">
-                                ${leagueData.teams.map(t => `<option value="\${t}" ${t === m.away ? 'selected' : ''}>${t}</option>`).join('')}
+                                ${leagueData.teams.map(t => `<option value="${t}" ${t === m.away ? 'selected' : ''}>${t}</option>`).join('')}
                             </select>
                         </div>
                         <div class="form-group form-group-date">
